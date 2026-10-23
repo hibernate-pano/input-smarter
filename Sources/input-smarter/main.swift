@@ -58,9 +58,17 @@ final class AppController {
                     inputSourceID: id.composite,
                     restoreKeyboard: existing?.restoreKeyboard ?? false
                 ))
+                // Apply the new rule right away instead of waiting for the
+                // change notification, so the input source has switched by the
+                // time the menu is rebuilt.
+                self.activationWatcher.reapply()
                 self.statusItem?.rebuild()
             }
         )
+        statusItem?.onRulesChanged = { [weak self] in
+            // The rule is gone: give the user's input source back now.
+            self?.activationWatcher.reapply()
+        }
 
         observeConfigurationChanges()
         observeApplicationActivation()

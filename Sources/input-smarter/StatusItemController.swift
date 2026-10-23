@@ -23,6 +23,10 @@ final class StatusItemController {
     private let onSelect: (InputSourceID) -> Void
     private let onSetRule: (String, String, InputSourceID) -> Void
 
+    /// Called after a rule was removed, so the input source can be given
+    /// back right away instead of on the next configuration change.
+    var onRulesChanged: (() -> Void)?
+
     init(
         store: RuleStore = .shared,
         onSelect: @escaping (InputSourceID) -> Void,
@@ -79,22 +83,18 @@ final class StatusItemController {
                 keyEquivalent: ""
             )
             let bindMenu = NSMenu()
-            for source in sources {
-                let item = NSMenuItem(
-                    title: source.displayName,
-                    action: #selector(setRule(_:)),
-                    keyEquivalent: ""
-                )
+            // The source this app is currently pinned to. It gets a checkmark,
+            // so the menu shows the state of the rule instead of a bare list.
+            let existing = store.configuration.rule(for: bundleID)
+            for item in Self.bindMenuItems(
+                sources: sources,
+                rule: existing,
+                bundleID: bundleID,
+                bundleName: bundleName
+            ) {
                 item.target = self
-                item.representedObject = BindingTarget(
-                    bundleID: bundleID,
-                    bundleName: bundleName,
-                    inputSourceID: source.id.composite
-                )
-                item.indentationLevel = 1
                 bindMenu.addItem(item)
             }
-            let existing = store.configuration.rule(for: bundleID)
             if let existing {
                 let remove = NSMenuItem(title: "取消固定", action: #selector(removeRule(_:)), keyEquivalent: "")
                 remove.target = self
@@ -168,6 +168,36 @@ final class StatusItemController {
         statusItem.menu = menu
     }
 
+    /// The items of the "bind the current app to a source" submenu.
+    ///
+    /// The source the app is currently pinned to carries a checkmark, so the
+    /// menu shows the state of the rule rather than a bare list of sources.
+    ///
+    /// Static and free of the status item, so the tests can build it.
+    static func bindMenuItems(
+        sources: [InputSourceInfo],
+        rule: AppRule?,
+        bundleID: String,
+        bundleName: String
+    ) -> [NSMenuItem] {
+        let bound = rule.map { InputSourceID(composite: $0.inputSourceID) }
+        return sources.map { source in
+            let item = NSMenuItem(
+                title: source.displayName,
+                action: #selector(setRule(_:)),
+                keyEquivalent: ""
+            )
+            item.representedObject = BindingTarget(
+                bundleID: bundleID,
+                bundleName: bundleName,
+                inputSourceID: source.id.composite
+            )
+            item.indentationLevel = 1
+            item.state = (bound == source.id) ? .on : .off
+            return item
+        }
+    }
+
     /// A readable description of a hotkey.
     private func describe(_ hotkey: HotkeyBinding) -> String {
         var parts: [String] = []
@@ -224,12 +254,14 @@ final class StatusItemController {
     @objc private func removeRule(_ sender: NSMenuItem) {
         guard let target = sender.representedObject as? BindingTarget else { return }
         store.removeAppRule(bundleID: target.bundleID)
+        onRulesChanged?()
         rebuild()
     }
 
     @objc private func toggleRule(_ sender: NSMenuItem) {
         guard let bundleID = sender.representedObject as? String else { return }
         store.removeAppRule(bundleID: bundleID)
+        onRulesChanged?()
         rebuild()
     }
 }

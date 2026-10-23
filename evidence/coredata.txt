@@ -1,0 +1,138 @@
+### SCHEMA
+CREATE TABLE ZAPPRULE ( Z_PK INTEGER PRIMARY KEY, Z_ENT INTEGER, Z_OPT INTEGER, ZDONOTRESTOREKEYBOARD INTEGER, ZDORESTOREKEYBOARD INTEGER, ZHIDEINDICATOR INTEGER, ZREMOVED INTEGER, ZCREATEDAT TIMESTAMP, ZBUNDLEID VARCHAR, ZBUNDLENAME VARCHAR, ZINPUTSOURCEID VARCHAR, ZURL VARCHAR , ZFUNCTIONKEYMODERAW VARCHAR, ZFORCEENGLISHPUNCTUATION INTEGER);
+CREATE TABLE ZBROWSERRULE ( Z_PK INTEGER PRIMARY KEY, Z_ENT INTEGER, Z_OPT INTEGER, ZDISABLED INTEGER, ZHIDEINDICATOR INTEGER, ZTYPEVALUE INTEGER, ZCREATEDAT TIMESTAMP, ZINPUTSOURCEID VARCHAR, ZKEYBOARDRESTORESTRATEGYRAW VARCHAR, ZSAMPLE VARCHAR, ZVALUE VARCHAR );
+CREATE TABLE ZKEYBOARDCONFIG ( Z_PK INTEGER PRIMARY KEY, Z_ENT INTEGER, Z_OPT INTEGER, ZBGCOLORHEX VARCHAR, ZID VARCHAR, ZTEXTCOLORHEX VARCHAR );
+CREATE TABLE Z_METADATA (Z_VERSION INTEGER PRIMARY KEY, Z_UUID VARCHAR(255), Z_PLIST BLOB);
+CREATE TABLE Z_MODELCACHE (Z_CONTENT BLOB);
+CREATE TABLE ZHOTKEYGROUP ( Z_PK INTEGER PRIMARY KEY, Z_ENT INTEGER, Z_OPT INTEGER, ZCREATEDAT TIMESTAMP, ZID VARCHAR, ZINPUTSOURCEIDS VARCHAR );
+CREATE TABLE Z_PRIMARYKEY (Z_ENT INTEGER PRIMARY KEY, Z_NAME VARCHAR, Z_SUPER INTEGER, Z_MAX INTEGER);
+
+### HOTKEYGROUP
+### APPRULE
+                    Z_PK: 2
+               ZBUNDLEID: com.google.Chrome
+             ZBUNDLENAME: Google Chrome
+          ZINPUTSOURCEID: com.tencent.inputmethod.wetype.pinyin::com.tencent.inputmethod.wetype.pinyin
+                    ZURL: file:///Applications/Google%20Chrome.app/
+   ZDONOTRESTOREKEYBOARD: 
+      ZDORESTOREKEYBOARD: 
+          ZHIDEINDICATOR: 
+     ZFUNCTIONKEYMODERAW: 
+ZFORCEENGLISHPUNCTUATION: 
+
+                    Z_PK: 4
+               ZBUNDLEID: com.tencent.xinWeChat
+             ZBUNDLENAME: 微信
+          ZINPUTSOURCEID: com.tencent.inputmethod.wetype.pinyin::com.tencent.inputmethod.wetype.pinyin
+                    ZURL: file:///Applications/WeChat.app/
+   ZDONOTRESTOREKEYBOARD: 
+      ZDORESTOREKEYBOARD: 
+          ZHIDEINDICATOR: 
+     ZFUNCTIONKEYMODERAW: 
+ZFORCEENGLISHPUNCTUATION: 
+
+                    Z_PK: 5
+               ZBUNDLEID: com.apple.finder
+             ZBUNDLENAME: 访达
+          ZINPUTSOURCEID: com.tencent.inputmethod.wetype.pinyin::com.tencent.inputmethod.wetype.pinyin
+                    ZURL: file:///System/Library/CoreServices/Finder.app/
+   ZDONOTRESTOREKEYBOARD: 
+      ZDORESTOREKEYBOARD: 
+          ZHIDEINDICATOR: 
+     ZFUNCTIONKEYMODERAW: 
+ZFORCEENGLISHPUNCTUATION: 
+
+                    Z_PK: 6
+               ZBUNDLEID: com.electron.lark
+             ZBUNDLENAME: 飞书
+          ZINPUTSOURCEID: com.tencent.inputmethod.wetype.pinyin::com.tencent.inputmethod.wetype.pinyin
+                    ZURL: file:///Applications/Lark.app/
+   ZDONOTRESTOREKEYBOARD: 
+      ZDORESTOREKEYBOARD: 
+          ZHIDEINDICATOR: 
+     ZFUNCTIONKEYMODERAW: 
+ZFORCEENGLISHPUNCTUATION: 
+
+                    Z_PK: 11
+               ZBUNDLEID: com.raycast.macos
+             ZBUNDLENAME: Raycast
+          ZINPUTSOURCEID: com.apple.keylayout.ABC
+                    ZURL: file:///Applications/Raycast.app/
+   ZDONOTRESTOREKEYBOARD: 
+      ZDORESTOREKEYBOARD: 
+          ZHIDEINDICATOR: 
+     ZFUNCTIONKEYMODERAW: 
+ZFORCEENGLISHPUNCTUATION: 
+
+                    Z_PK: 12
+               ZBUNDLEID: com.microsoft.VSCode
+             ZBUNDLENAME: Visual Studio Code
+          ZINPUTSOURCEID: com.apple.keylayout.ABC
+                    ZURL: file:///Applications/Visual%20Studio%20Code.app/
+   ZDONOTRESTOREKEYBOARD: 
+      ZDORESTOREKEYBOARD: 0
+          ZHIDEINDICATOR: 
+     ZFUNCTIONKEYMODERAW: 
+ZFORCEENGLISHPUNCTUATION: 
+
+                    Z_PK: 16
+               ZBUNDLEID: dev.kdrag0n.MacVirt
+             ZBUNDLENAME: OrbStack
+          ZINPUTSOURCEID: com.apple.keylayout.ABC
+                    ZURL: file:///Applications/OrbStack.app/
+   ZDONOTRESTOREKEYBOARD: 
+      ZDORESTOREKEYBOARD: 
+          ZHIDEINDICATOR: 
+     ZFUNCTIONKEYMODERAW: 
+ZFORCEENGLISHPUNCTUATION: 
+
+                    Z_PK: 17
+               ZBUNDLEID: com.apple.podcasts
+             ZBUNDLENAME: 播客.app
+          ZINPUTSOURCEID: com.tencent.inputmethod.wetype.pinyin::com.tencent.inputmethod.wetype.pinyin
+                    ZURL: file:///System/Applications/Podcasts.app/
+   ZDONOTRESTOREKEYBOARD: 
+      ZDORESTOREKEYBOARD: 
+          ZHIDEINDICATOR: 
+     ZFUNCTIONKEYMODERAW: 
+ZFORCEENGLISHPUNCTUATION: 
+
+                    Z_PK: 32
+               ZBUNDLEID: com.apple.Terminal
+             ZBUNDLENAME: 终端.app
+          ZINPUTSOURCEID: com.apple.keylayout.ABC
+                    ZURL: file:///System/Applications/Utilities/Terminal.app/
+   ZDONOTRESTOREKEYBOARD: 
+      ZDORESTOREKEYBOARD: 
+          ZHIDEINDICATOR: 
+     ZFUNCTIONKEYMODERAW: 
+ZFORCEENGLISHPUNCTUATION: 
+
+                    Z_PK: 43
+               ZBUNDLEID: com.mitchellh.ghostty
+             ZBUNDLENAME: Ghostty.app
+          ZINPUTSOURCEID: com.apple.keylayout.ABC
+                    ZURL: file:///Applications/Ghostty.app/
+   ZDONOTRESTOREKEYBOARD: 
+      ZDORESTOREKEYBOARD: 
+          ZHIDEINDICATOR: 
+     ZFUNCTIONKEYMODERAW: 
+ZFORCEENGLISHPUNCTUATION: 
+
+                    Z_PK: 48
+               ZBUNDLEID: com.stablyai.orca
+             ZBUNDLENAME: Orca.app
+          ZINPUTSOURCEID: com.apple.keylayout.ABC
+                    ZURL: file:///Applications/Orca.app/
+   ZDONOTRESTOREKEYBOARD: 
+      ZDORESTOREKEYBOARD: 
+          ZHIDEINDICATOR: 
+     ZFUNCTIONKEYMODERAW: 
+ZFORCEENGLISHPUNCTUATION: 
+### BROWSERRULE
+### KEYBOARDCONFIG
+Z_PK  Z_ENT  Z_OPT  ZBGCOLORHEX                                      ZID                                       ZTEXTCOLORHEX
+----  -----  -----  -----------  ----------------------------------------------------------------------------  -------------
+   1      4      7  fefefef2     com.apple.keylayout.ABC                                                       000000ff
+   2      4      7  fefefef2     com.tencent.inputmethod.wetype.pinyin                                         000000ff
+   3      4      1  fefefef2     com.tencent.inputmethod.wetype.pinyin::com.tencent.inputmethod.wetype.pinyin  000000ff

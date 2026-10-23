@@ -1,0 +1,38 @@
+{
+  "appearanceMode" => {length = 7, bytes = 0x224c6967687422}
+  "browserAddressDefaultKeyboardId" => "com.tencent.inputmethod.wetype.pinyin"
+  "didMigrateModeAwareHotKeyGroups" => true
+  "didMigrateModeAwareKeyboardConfigs" => true
+  "indicatorInfo" => {length = 23, bytes = 0x7b2262617365223a2269636f6e416e645469746c65227d}
+  "indicatorSize" => {length = 10, bytes = 0x7b2262617365223a317d}
+  "isActiveWhenFocusedElementChanges" => false
+  "isActiveWhenLongpressLeftMouse" => false
+  "isActiveWhenSwitchApp" => false
+  "isActiveWhenSwitchInputSource" => false
+  "isDetectSpotlightLikeApp" => true
+  "isEnableURLSwitchForChrome" => true
+  "isLaunchAtLogin" => true
+  "isShowIconInMenuBar" => false
+  "LaunchAtLogin__hasMigrated" => true
+  "NSNavPanelExpandedSizeForOpenMode" => "{881, 448}"
+  "NSOSPLastRootDirectory" => {length = 624, bytes = 0x626f6f6b700200000000051040000000 ... 2401000000000000}
+  "NSSplitView Subview Frames NSColorPanelSplitView" => [
+    0 => "0.000000, 0.000000, 224.000000, 258.000000, NO, NO"
+    1 => "0.000000, 259.000000, 224.000000, 48.000000, NO, NO"
+  ]
+  "NSToolbar Configuration com.apple.NSColorPanel" => {
+    "TB Is Shown" => 1
+  }
+  "NSWindow Frame NSNavPanelAutosaveName" => "464 487 800 448 0 0 1728 1079 "
+  "NSWindow Frame SUUpdateAlert" => "718 684 620 398 0 0 2056 1290 "
+  "NSWindow Frame SUUpdateAlert2" => "762 681 551 402 0 0 2056 1290 "
+  "prevInstalledBuildVersion" => 1171
+  "receivesBetaUpdates" => false
+  "shortcutModeInputSourceMapping" => {length = 2, bytes = 0x7b7d}
+  "singleModifierInputSourceMapping" => {length = 2, bytes = 0x7b7d}
+  "singleModifierTriggerInputSourceMapping" => {length = 2, bytes = 0x7b7d}
+  "SUAutomaticallyUpdate" => true
+  "SUHasLaunchedBefore" => true
+  "SULastCheckTime" => 2026-10-22 15:38:39 +0000
+  "SUUpdateGroupIdentifier" => 1155750003
+}

@@ -1,0 +1,25 @@
+# Build output
+.build/
+build/
+
+# Scratch directories from reverse engineering and probing
+.tisprobe/
+.pi/
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# Editors
+.vscode/
+.idea/
+*.xcodeproj
+
+# Compiled probe tools (the .swift sources are kept)
+tools/probe/flags
+tools/probe/listen
+tools/probe/perm
+tools/probe/probe

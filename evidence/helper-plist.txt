@@ -1,0 +1,23 @@
+{
+  "CFBundleDisplayName" => "Cursor Helper"
+  "CFBundleExecutable" => "CaretControl"
+  "CFBundleIdentifier" => "com.runjuu.Input-Source-Pro.inputmethod.PaletteControl"
+  "CFBundleName" => "Cursor Helper"
+  "CFBundlePackageType" => "APPL"
+  "CFBundleShortVersionString" => "1.0"
+  "CFBundleVersion" => "1"
+  "ComponentInvisibleInSystemUI" => true
+  "InputMethodConnectionName" => "com_runjuu_Input_Source_Pro_PaletteControl_Connection"
+  "InputMethodServerControllerClass" => "CaretProbeController"
+  "InputMethodType" => "palette"
+  "ISPCaretBuild" => "a579d6cbc37ed9810d61e96d19e1e984933b410cf7685904135adf68807622f8"
+  "LSUIElement" => true
+  "NSPrincipalClass" => "NSApplication"
+  "TISInputSourceID" => "com.runjuu.Input-Source-Pro.inputmethod.PaletteControl"
+  "TISIntendedLanguage" => "en"
+  "tsInputMethodAlternateIconFileKey" => "CursorMenuAlternate.tiff"
+  "tsInputMethodCharacterRepertoireKey" => [
+    0 => "Latn"
+  ]
+  "tsInputMethodIconFileKey" => "CursorMenu.tiff"
+}

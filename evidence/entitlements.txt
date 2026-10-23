@@ -1,0 +1,16 @@
+### MAIN
+Executable=/Applications/Input Source Pro.app/Contents/MacOS/Input Source Pro
+[Dict]
+	[Key] com.apple.security.app-sandbox
+	[Value]
+		[Bool] false
+	[Key] com.apple.security.automation.apple-events
+	[Value]
+		[Bool] true
+	[Key] com.apple.security.device.input-monitoring
+	[Value]
+		[Bool] true
+
+### HELPER
+Executable=/Applications/Input Source Pro.app/Contents/Helpers/CaretPalette/ISP Palette Control.app/Contents/MacOS/CaretControl
+[Dict]

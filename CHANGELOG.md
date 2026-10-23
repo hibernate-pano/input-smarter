@@ -1,0 +1,37 @@
+# Changelog
+
+本项目的版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
+
+## 0.0.1
+
+首个公开版本。
+
+### 功能
+
+- 按应用自动切换输入法，离开时可选恢复
+- 热键在多个输入法之间轮换
+- 单修饰键点按切换（左右键分开，支持单击/双击）
+- 默认输入法：没有规则命中时使用的兜底输入法
+- 浏览器地址栏规则（判定逻辑已实装，Chrome/Safari 的 `AXWebArea` 结构待逐个浏览器确认）
+- 菜单栏菜单：当前输入法、手动切换、给当前 app 固定输入法、规则与快捷键一览
+- 命令行配置，跨进程热重载
+- 从 Input Source Pro 的 Core Data 库只读导入规则
+- LaunchAgent 开机自启
+
+### 修复
+
+- 地址栏判定监听发错了通知中心（`NotificationCenter.default` → `NSWorkspace.shared`），功能此前从未触发
+- 修饰键重复绑定会让进程崩溃（`Dictionary(uniqueKeysWithValues:)` 的 fatal error）
+- 配置文件缺字段或损坏时整份配置会被清空，并在下一次写入时覆盖用户的数据；现在按字段容错解码，并保留 `config.json.bak`
+- app 进程会用内存里的旧快照覆盖 CLI 刚写入的配置
+- 同时按住两个修饰键会误触发（README 声明的语义此前并未实现）
+- 改了热键的键位或修饰键后不会重新注册
+- `--add-hotkey` 每次新建一条热键，重复的组合会被 Carbon 悄悄丢弃；现在同样的键位是幂等更新
+- 没有单实例保护，LaunchAgent 启动的实例会和手动启动的实例抢同一个输入源
+- 配置变化后不会对当前前台 app 重新判定规则，删除规则后输入法会卡在规则的目标上
+- 菜单里写的 app 和实际绑定的 app 可能不是同一个
+- 裸输入法 id（不带 `::mode`）无法解析，现在会自动补成完整形式
+- `--launch-at-login` 只认小写 `on`，`ON` 会被当成关闭
+- 构建脚本把 `--install` 当成第一个参数时会把构建搞坏
+- 签名没有固定 designated requirement，改一行代码就会丢失辅助功能授权
+- 错误全部被静默吞掉；现在写入 `~/Library/Logs/input-smarter.log`

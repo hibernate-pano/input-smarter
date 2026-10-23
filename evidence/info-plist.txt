@@ -1,0 +1,42 @@
+{
+  "BuildMachineOSBuild" => "26A434"
+  "CFBundleDevelopmentRegion" => "en"
+  "CFBundleExecutable" => "Input Source Pro"
+  "CFBundleIconFile" => "AppIcon"
+  "CFBundleIconName" => "AppIcon"
+  "CFBundleIdentifier" => "com.runjuu.Input-Source-Pro"
+  "CFBundleInfoDictionaryVersion" => "6.0"
+  "CFBundleName" => "Input Source Pro"
+  "CFBundlePackageType" => "APPL"
+  "CFBundleShortVersionString" => "2.13.2"
+  "CFBundleSupportedPlatforms" => [
+    0 => "MacOSX"
+  ]
+  "CFBundleURLTypes" => [
+    0 => {
+      "CFBundleURLName" => "com.runjuu.Input-Source-Pro"
+      "CFBundleURLSchemes" => [
+        0 => "inputsourcepro"
+      ]
+    }
+  ]
+  "CFBundleVersion" => "1171"
+  "DTCompiler" => "com.apple.compilers.llvm.clang.1_0"
+  "DTPlatformBuild" => "26A425"
+  "DTPlatformName" => "macosx"
+  "DTPlatformVersion" => "27.0"
+  "DTSDKBuild" => "26A425"
+  "DTSDKName" => "macosx27.0"
+  "DTXcode" => "2700"
+  "DTXcodeBuild" => "27A266a"
+  "ISPReleaseChannel" => "stable"
+  "LSApplicationCategoryType" => "public.app-category.productivity"
+  "LSMinimumSystemVersion" => "12.0"
+  "LSUIElement" => true
+  "NSAppleEventsUsageDescription" => "Input Source Pro needs to monitor keyboard input to automatically switch between English and Chinese punctuation marks based on your app-specific rules."
+  "NSAppleScriptEnabled" => true
+  "SUEnableAutomaticChecks" => true
+  "SUFeedURL" => "https://inputsource.pro/stable/appcast.xml"
+  "SUPublicEDKey" => "oVx6o5OjVhhAmgHLxajfyBWZL+aU0C27ncWAaDl1nXI="
+  "UIDesignRequiresCompatibility" => true
+}

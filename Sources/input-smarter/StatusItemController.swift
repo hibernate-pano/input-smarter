@@ -30,6 +30,9 @@ final class StatusItemController {
     /// Called when the user asks for the settings window.
     var onOpenSettings: (() -> Void)?
 
+    /// Called when the user asks to edit the hotkeys.
+    var onOpenHotkeys: (() -> Void)?
+
     init(
         store: RuleStore = .shared,
         onSelect: @escaping (InputSourceID) -> Void,
@@ -51,14 +54,20 @@ final class StatusItemController {
     func rebuild() {
         let menu = NSMenu()
 
+        // The sources are read first: the name of the source that is in use
+        // is the name of one of them.
+        let sources = InputSourceRegistry.availableSources()
         let current = InputSourceRegistry.current()
-        let currentItem = NSMenuItem(title: "当前：\(current?.composite ?? "未知")", action: nil, keyEquivalent: "")
+        let currentItem = NSMenuItem(
+            title: "当前：\(Self.currentSourceName(sources: sources, current: current))",
+            action: nil,
+            keyEquivalent: ""
+        )
         currentItem.isEnabled = false
         menu.addItem(currentItem)
         menu.addItem(.separator())
 
         // Manual switching.
-        let sources = InputSourceRegistry.availableSources()
         let sourcesItem = NSMenuItem(title: "切换输入法", action: nil, keyEquivalent: "")
         let sourcesMenu = NSMenu()
         for source in sources {
@@ -74,6 +83,30 @@ final class StatusItemController {
         }
         sourcesItem.submenu = sourcesMenu
         menu.addItem(sourcesItem)
+
+        // The fallback input source: the one that is used when no rule
+        // applies. It is a switch like any other, so it belongs here and not
+        // in a window that has to be opened first.
+        let defaultID = store.configuration.defaultInputSourceID
+        let defaultItem = NSMenuItem(
+            title: "默认输入法：\(Self.defaultSourceName(sources: sources, defaultID: defaultID))",
+            action: nil,
+            keyEquivalent: ""
+        )
+        let defaultMenu = NSMenu()
+        for item in Self.defaultSourceMenuItems(sources: sources, defaultID: defaultID) {
+            item.target = self
+            item.action = #selector(setDefaultSource(_:))
+            defaultMenu.addItem(item)
+        }
+        defaultItem.submenu = defaultMenu
+        menu.addItem(defaultItem)
+
+        // Launch at login.
+        let launchAtLogin = Self.launchAtLoginItem(isEnabled: LoginItem.isEnabled)
+        launchAtLogin.target = self
+        launchAtLogin.action = #selector(toggleLaunchAtLogin(_:))
+        menu.addItem(launchAtLogin)
 
         // Bind the current app to a source.
         if let front = NSWorkspace.shared.frontmostApplication,
@@ -120,7 +153,7 @@ final class StatusItemController {
             let rulesMenu = NSMenu()
             for rule in rules {
                 let item = NSMenuItem(
-                    title: "\(rule.bundleName)：\(rule.inputSourceID)\(rule.restoreKeyboard ? "（离开时恢复）" : "")",
+                    title: "\(rule.bundleName)：\(Self.sourceName(rule.inputSourceID, in: sources))\(rule.restoreKeyboard ? "（离开时恢复）" : "")",
                     action: #selector(toggleRule(_:)),
                     keyEquivalent: ""
                 )
@@ -142,7 +175,7 @@ final class StatusItemController {
             let shortcutsMenu = NSMenu()
             for hotkey in config.hotkeys {
                 let item = NSMenuItem(
-                    title: "⌨︎ \(describe(hotkey)) → \(hotkey.inputSourceIDs.joined(separator: " → "))",
+                    title: "⌨︎ \(KeyCombo(keyCode: hotkey.keyCode, modifiers: hotkey.modifiers).display) → \(hotkey.inputSourceIDs.map { Self.sourceName($0, in: sources) }.joined(separator: " → "))",
                     action: nil,
                     keyEquivalent: ""
                 )
@@ -152,7 +185,7 @@ final class StatusItemController {
             }
             for binding in config.singleModifierBindings {
                 let item = NSMenuItem(
-                    title: "⌨︎ \(binding.modifier.displayName)（\(binding.trigger.displayName)）→ \(binding.inputSourceID)",
+                    title: "⌨︎ \(binding.modifier.displayName)（\(binding.trigger.displayName)）→ \(Self.sourceName(binding.inputSourceID, in: sources))",
                     action: nil,
                     keyEquivalent: ""
                 )
@@ -160,6 +193,10 @@ final class StatusItemController {
                 item.indentationLevel = 1
                 shortcutsMenu.addItem(item)
             }
+            shortcutsMenu.addItem(.separator())
+            let edit = NSMenuItem(title: "编辑…", action: #selector(openHotkeys(_:)), keyEquivalent: "")
+            edit.target = self
+            shortcutsMenu.addItem(edit)
             shortcutsItem.submenu = shortcutsMenu
             menu.addItem(shortcutsItem)
         }
@@ -204,51 +241,103 @@ final class StatusItemController {
         }
     }
 
-    /// A readable description of a hotkey.
-    private func describe(_ hotkey: HotkeyBinding) -> String {
-        var parts: [String] = []
-        if hotkey.modifiers & UInt32(cmdKey) != 0 { parts.append("⌘") }
-        if hotkey.modifiers & UInt32(shiftKey) != 0 { parts.append("⇧") }
-        if hotkey.modifiers & UInt32(optionKey) != 0 { parts.append("⌥") }
-        if hotkey.modifiers & UInt32(controlKey) != 0 { parts.append("⌃") }
-        parts.append(Self.keyName(hotkey.keyCode))
-        return parts.joined()
+    /// The items of the "default input source" submenu.
+    ///
+    /// The source that is the default is marked, so the menu shows the state
+    /// of the setting instead of a bare list of sources. The first item takes
+    /// the default away again.
+    ///
+    /// Static and free of the status item, so the tests can build it.
+    static func defaultSourceMenuItems(
+        sources: [InputSourceInfo],
+        defaultID: String?
+    ) -> [NSMenuItem] {
+        var items: [NSMenuItem] = []
+        let follow = NSMenuItem(title: "跟随系统（不设默认）", action: nil, keyEquivalent: "")
+        follow.state = (defaultID == nil) ? .on : .off
+        follow.representedObject = ""
+        items.append(follow)
+        for source in sources {
+            let item = NSMenuItem(title: source.displayName, action: nil, keyEquivalent: "")
+            item.state = (source.id.composite == defaultID) ? .on : .off
+            item.representedObject = source.id.composite
+            items.append(item)
+        }
+        return items
     }
 
-    /// The character a virtual key code produces on the current layout.
-    private static func keyName(_ keyCode: UInt16) -> String {
-        guard let source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
-              let data = TISGetInputSourceProperty(source, TISKey.unicodeKeyLayoutData) else {
-            return "键\(keyCode)"
+    /// The name of the fallback input source, for the title of the submenu.
+    static func defaultSourceName(sources: [InputSourceInfo], defaultID: String?) -> String {
+        guard let defaultID else { return "跟随系统" }
+        return sources.first { $0.id.composite == defaultID }?.displayName ?? defaultID
+    }
+
+    /// The name of the input source that is in use.
+    ///
+    /// The system reports an identifier, but the user knows the source by
+    /// its name. A source that is not in the list keeps the last part of its
+    /// identifier, which is the name the system gave it.
+    static func currentSourceName(sources: [InputSourceInfo], current: InputSourceID?) -> String {
+        guard let current else { return "未知" }
+        if let source = sources.first(where: { $0.id == current }) {
+            return source.displayName
         }
-        let cfData = Unmanaged<CFData>.fromOpaque(data).takeUnretainedValue()
-        guard let bytes = CFDataGetBytePtr(cfData) else { return "键\(keyCode)" }
-        let layout = UnsafeRawPointer(bytes).assumingMemoryBound(to: UCKeyboardLayout.self)
-        var deadState: UInt32 = 0
-        var length = 0
-        var characters = [UniChar](repeating: 0, count: 8)
-        let status = UCKeyTranslate(
-            layout,
-            keyCode,
-            UInt16(kUCKeyActionDisplay),
-            0,
-            UInt32(LMGetKbdType()),
-            OptionBits(kUCKeyTranslateNoDeadKeysMask),
-            &deadState,
-            characters.count,
-            &length,
-            &characters
-        )
-        guard status == noErr, length > 0, let scalar = UnicodeScalar(characters[0]) else {
-            return "键\(keyCode)"
+        return current.sourceID.split(separator: ".").last.map(String.init) ?? current.sourceID
+    }
+
+    /// The name of an input source, for the menu.
+    static func sourceName(_ composite: String, in sources: [InputSourceInfo]) -> String {
+        if let source = sources.first(where: { $0.id.composite == composite }) {
+            return source.displayName
         }
-        return String(Character(scalar).uppercased())
+        return InputSourceID(composite: composite).sourceID
+            .split(separator: ".").last.map(String.init) ?? composite
+    }
+
+    /// The item that turns launch at login on and off.
+    static func launchAtLoginItem(isEnabled: Bool) -> NSMenuItem {
+        let item = NSMenuItem(title: "开机自启", action: nil, keyEquivalent: "")
+        item.state = isEnabled ? .on : .off
+        return item
     }
 
     @objc private func selectSource(_ sender: NSMenuItem) {
         guard let composite = sender.representedObject as? String else { return }
         onSelect(InputSourceID(composite: composite))
         rebuild()
+    }
+
+    /// Make an input source the fallback one.
+    ///
+    /// An empty identifier means "no fallback": the system decides which
+    /// input source is used when no rule applies.
+    @objc private func setDefaultSource(_ sender: NSMenuItem) {
+        guard let composite = sender.representedObject as? String else { return }
+        store.setDefaultInputSource(composite.isEmpty ? nil : composite)
+        Log.debug("[config] default source = \(composite.isEmpty ? "none" : composite)")
+        rebuild()
+    }
+
+    /// Turn launch at login on or off.
+    @objc private func toggleLaunchAtLogin(_ sender: Any?) {
+        let result = LoginItem.set(!LoginItem.isEnabled)
+        Log.debug("[login] \(result.message)")
+        if !result.success { presentError(result.message) }
+        rebuild()
+    }
+
+    /// Open the settings window on the page where the hotkeys are edited.
+    @objc private func openHotkeys(_ sender: Any?) {
+        onOpenHotkeys?()
+    }
+
+    /// Show a failure to the user.
+    private func presentError(_ message: String) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "没能改成功"
+        alert.informativeText = message
+        alert.runModal()
     }
 
     @objc private func setRule(_ sender: NSMenuItem) {

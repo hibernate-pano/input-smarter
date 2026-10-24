@@ -19,7 +19,6 @@ struct AppRulesView: View {
                 list
             }
         }
-        .frame(minWidth: 560, minHeight: 400)
     }
 
     // MARK: - The list of the configured apps

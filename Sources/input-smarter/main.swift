@@ -77,6 +77,9 @@ final class AppController {
         statusItem?.onOpenSettings = { [weak self] in
             self?.showSettings()
         }
+        statusItem?.onOpenHotkeys = { [weak self] in
+            self?.showSettings(page: .hotkeys)
+        }
 
         observeConfigurationChanges()
         observeApplicationActivation()
@@ -99,8 +102,8 @@ final class AppController {
         }
     }
 
-    /// Open the settings window: the app list.
-    private func showSettings() {
+    /// Open the settings window on a page.
+    private func showSettings(page: SettingsPage = .apps) {
         if settingsWindow == nil {
             let window = SettingsWindowController()
             window.onRulesChanged = { [weak self] in
@@ -108,9 +111,15 @@ final class AppController {
                 self?.activationWatcher.reapply()
                 self?.statusItem?.rebuild()
             }
+            window.onHotkeysPaused = { [weak self] recording in
+                guard let self else { return }
+                // While a combination is being recorded, the app's own hotkeys
+                // would swallow the key presses.
+                self.hotkeys.sync(recording ? [] : self.store.configuration.hotkeys)
+            }
             settingsWindow = window
         }
-        settingsWindow?.show()
+        settingsWindow?.show(page: page)
     }
 
     /// Install the menu of the app.
@@ -404,8 +413,9 @@ enum CLI {
         case "--launch-at-login":
             guard arguments.count >= 2 else { return usage() }
             let enabled = parseToggle(arguments[1])
-            print(LoginItem.set(enabled))
-            return 0
+            let result = LoginItem.set(enabled)
+            print(result.message)
+            return result.success ? 0 : 1
 
         case "--help", "-h":
             return usage()

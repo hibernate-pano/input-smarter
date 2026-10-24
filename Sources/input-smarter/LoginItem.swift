@@ -9,6 +9,12 @@ import Foundation
 enum LoginItem {
     static let label = "com.panbo.input-smarter"
 
+    /// What happened when launch at login was turned on or off.
+    struct Result {
+        let success: Bool
+        let message: String
+    }
+
     private static var agentsDirectory: URL {
         FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("LaunchAgents", isDirectory: true)
@@ -22,17 +28,14 @@ enum LoginItem {
         FileManager.default.fileExists(atPath: plistURL.path)
     }
 
-    /// Turn launch-at-login on or off. Returns a message describing the result.
-    static func set(_ enabled: Bool) -> String {
-        if enabled {
-            return enable()
-        }
-        return disable()
+    /// Turn launch-at-login on or off.
+    static func set(_ enabled: Bool) -> Result {
+        enabled ? enable() : disable()
     }
 
-    private static func enable() -> String {
+    private static func enable() -> Result {
         guard let executable = Bundle.main.executablePath else {
-            return "cannot locate the executable"
+            return Result(success: false, message: "cannot locate the executable")
         }
         do {
             try FileManager.default.createDirectory(at: agentsDirectory, withIntermediateDirectories: true)
@@ -46,23 +49,25 @@ enum LoginItem {
             let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
             try data.write(to: plistURL, options: .atomic)
         } catch {
-            return "failed to write \(plistURL.path): \(error.localizedDescription)"
+            return Result(success: false, message: "failed to write \(plistURL.path): \(error.localizedDescription)")
         }
         // Ask launchd to pick it up now as well as at the next login.
         let status = runLaunchctl(["load", "-w", plistURL.path])
-        return status == 0 ? "enabled (\(plistURL.path))" : "enabled, but launchctl load failed (code \(status))"
+        return status == 0
+            ? Result(success: true, message: "enabled (\(plistURL.path))")
+            : Result(success: false, message: "enabled, but launchctl load failed (code \(status))")
     }
 
-    private static func disable() -> String {
+    private static func disable() -> Result {
         guard FileManager.default.fileExists(atPath: plistURL.path) else {
-            return "not enabled"
+            return Result(success: true, message: "not enabled")
         }
         _ = runLaunchctl(["unload", "-w", plistURL.path])
         do {
             try FileManager.default.removeItem(at: plistURL)
-            return "disabled"
+            return Result(success: true, message: "disabled")
         } catch {
-            return "failed to remove \(plistURL.path): \(error.localizedDescription)"
+            return Result(success: false, message: "failed to remove \(plistURL): \(error.localizedDescription)")
         }
     }
 

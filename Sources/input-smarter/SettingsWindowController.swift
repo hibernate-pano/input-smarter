@@ -14,21 +14,26 @@ final class SettingsPanel: NSPanel {
 /// The settings window.
 ///
 /// It holds the app list: the place where a rule is created for an app that
-/// is not the one in front right now.
+/// is not the one in front right now. The hotkeys have a page of their own.
 @MainActor
 final class SettingsWindowController: NSObject, NSWindowDelegate {
     /// Called after a rule was changed, so the running app can apply it right
     /// away.
     var onRulesChanged: (() -> Void)?
 
+    /// Called while a key combination is being recorded, so the app can take
+    /// its own hotkeys out of the way.
+    var onHotkeysPaused: ((Bool) -> Void)?
+
     private var window: NSWindow?
-    private var model: AppRulesViewModel?
+    private var model: SettingsViewModel?
     private let store = RuleStore.shared
 
     /// Open the window, bringing it to the front if it is already open.
-    func show() {
+    func show(page: SettingsPage = .apps) {
         let window = self.window ?? makeWindow()
         self.window = window
+        model?.show(page)
         refresh()
         takeFocus()
         window.makeKeyAndOrderFront(nil)
@@ -51,19 +56,28 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     /// the app is a menu bar app again. The focus goes back to the app the
     /// user came from by itself: macOS remembers which app was in front.
     private func takeFocus() {
-        guard !NSApp.isActive else { return }
-        NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
+        if NSApp.activationPolicy() != .regular {
+            NSApp.setActivationPolicy(.regular)
+        }
+        if !NSApp.isActive {
+            NSApp.activate(ignoringOtherApps: true)
+        }
     }
 
     /// The window is closed: the app goes back to being a menu bar app.
     func windowWillClose(_ notification: Notification) {
+        // A hotkey that was being recorded takes the app's own hotkeys out of
+        // the way: they have to come back when the window goes.
+        model?.hotkeys.cancelAdding()
         NSApp.setActivationPolicy(.accessory)
     }
 
     private func makeWindow() -> NSWindow {
-        let model = AppRulesViewModel(store: store, installed: [], sources: [])
-        model.onRulesChanged = { [weak self] in self?.onRulesChanged?() }
+        let model = SettingsViewModel(store: store, installed: [], sources: [])
+        model.appRules.onRulesChanged = { [weak self] in self?.onRulesChanged?() }
+        model.hotkeys.onRecordingChanged = { [weak self] recording in
+            self?.onHotkeysPaused?(recording)
+        }
         self.model = model
 
         // A panel that does not activate the app: an app in the menu bar is
@@ -84,7 +98,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         // search box can be typed into, without the app in the menu bar
         // taking the focus away from the app the user is working in.
         window.becomesKeyOnlyIfNeeded = true
-        window.contentView = NSHostingView(rootView: AppRulesView(model: model))
+        window.contentView = NSHostingView(rootView: SettingsView(model: model))
         window.setFrameAutosaveName("input-smarter.settings")
         window.center()
         return window
@@ -99,8 +113,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         model.setSources(InputSourceRegistry.availableSources())
         // The source that is in use right now is the one a newly added app
         // is bound to.
-        model.currentSourceID = InputSourceRegistry.current()?.composite
-        model.beginLoading()
+        model.appRules.currentSourceID = InputSourceRegistry.current()?.composite
+        model.appRules.beginLoading()
         // The apps that are configured but live outside the usual folders are
         // found through Launch Services.
         let configured = store.configuration.appRules.map(\.bundleID)
@@ -109,7 +123,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             let scanned = AppCatalog.installedApps(in: AppCatalog.defaultDirectories)
             let apps = AppCatalog.merge(scanned, resolved)
             DispatchQueue.main.async {
-                self?.model?.setInstalled(apps)
+                self?.model?.appRules.setInstalled(apps)
             }
         }
     }

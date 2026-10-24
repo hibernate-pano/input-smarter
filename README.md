@@ -70,8 +70,8 @@ kTISPropertyLocalizedName         →  实际是 "TSMInputSourcePropertyLocalize
 - **默认输入法** —— 没有规则时使用的兜底输入法
 - **开机自启** —— LaunchAgent plist（`~/Library/LaunchAgents/com.panbo.input-smarter.plist`）
 - **从原 app 一键导入规则** —— 直接读 Input Source Pro 的 Core Data 库（只读）
-- **菜单栏菜单** —— 当前输入法、手动切换、为当前 app 绑定输入法、规则列表
-- **设置窗口** —— 只列出已配置过的 app，点「＋ 添加 app」按需添加，给任意 app 提前固定输入法（不用先切到那个 app）
+- **菜单栏菜单** —— 当前输入法、手动切换、默认输入法、开机自启、为当前 app 绑定输入法、规则列表
+- **设置窗口** —— 「应用」页只列出已配置过的 app，点「＋ 添加 app」按需添加；「快捷键」页可以直接录一个组合键，在多个输入法之间轮换
 - **命令行改配置、运行中的 app 立即生效** —— 走 `DistributedNotificationCenter` 跨进程通知
 
 ### 单修饰键的判定语义
@@ -176,13 +176,17 @@ designated => identifier "com.panbo.input-smarter"
 
 ### 菜单栏
 
-点菜单栏图标：看当前输入法、手动切换、给当前 app 绑定输入法、查看/删除已配置的规则、查看已配置的热键和单修饰键。
+点菜单栏图标：看当前输入法、手动切换、设置默认输入法、开关开机自启、给当前 app 绑定输入法、查看/删除已配置的规则、查看已配置的热键和单修饰键。
 
 菜单里出现的 app 名字就是规则会绑定的那个 app——菜单在切换 app 时会重建，不会出现「菜单写着 A、绑到 B」的情况。
 
+「默认输入法」和「开机自启」放在菜单里而不是设置窗口：这两个是开关，看一眼状态、点一下就改完，不用先打开一个会抢焦点的窗口。需要动手输入的（快捷键）才进设置窗口。
+
 ### 设置窗口
 
-菜单栏菜单里选「设置…」（或 `Cmd+,`）打开。窗口里只列出**已经配置过**的 app：
+菜单栏菜单里选「设置…」（或 `Cmd+,`）打开。窗口顶部是一个分段控件，两页各管一件事：
+
+**「应用」页** —— 只列出**已经配置过**的 app：
 
 - **每行** —— app 图标、名字、绑定的输入法（右侧下拉）、取消固定的按钮
 - **规则指向的 app 即使没装也仍然显示**，标「未安装」
@@ -190,6 +194,13 @@ designated => identifier "com.panbo.input-smarter"
 - **底部的「＋ 添加 app」** —— 点开是一个可以搜索的 app 列表，选中的 app 直接按当前正在用的输入法固定好，回到列表
 
 下拉里选「恢复默认」＝删掉这条规则：这个 app 回到系统的默认输入法，同时从列表里消失；以后想再配，点「＋ 添加 app」加回来。
+
+**「快捷键」页** —— 录一个组合键，让它在几个输入法之间轮换：
+
+- **每行** —— 组合键（如 `⌥空格`）、轮换的输入法、删除按钮
+- **底部的「＋ 添加快捷键」** —— 展开一个编辑器：点那个框然后按下组合键（直接从键盘事件里取，不靠打字），再从「添加输入法」里挑要轮换的输入法，顺序就是轮换顺序
+- 至少要带一个修饰键：光按一个字母会在所有 app 里都吃掉这个键
+- 同一个组合键不能给两个快捷键——Carbon 只留一个，第二条会被系统悄悄丢掉，所以这里直接拒绝
 
 改完立刻生效，规则会对当前正在用的 app 重新判定一次。
 
@@ -264,7 +275,12 @@ Sources/input-smarter/
   AppCatalog.swift             枚举已安装的 app（扫描常用目录 + Launch Services 反查）
   AppList.swift                已配置 app 的行、可添加的 app、搜索
   AppRulesViewModel.swift      设置窗口的状态与写规则
-  AppRulesView.swift           设置窗口的界面（SwiftUI）
+  AppRulesView.swift           设置窗口的「应用」页（SwiftUI）
+  KeyCombo.swift               组合键的表示与显示（⌥空格）
+  KeyRecorder.swift            录组合键的控件（直接取键盘事件）
+  HotkeysViewModel.swift       快捷键的增删与校验
+  HotkeysView.swift            设置窗口的「快捷键」页（SwiftUI）
+  SettingsView.swift           设置窗口的页面切换
   SettingsWindowController.swift 设置窗口（non-activating panel）
   MainMenu.swift               窗口打开时 app 的菜单栏
   Log.swift                   IS_DEBUG=1 时输出诊断；错误始终写入日志文件
@@ -277,6 +293,9 @@ Tests/input-smarterTests/
   AppCatalogTests.swift        app 枚举
   AppListTests.swift           app 列表的合并与搜索
   AppRulesViewModelTests.swift 设置窗口的绑定动作
+  KeyComboTests.swift          组合键的显示与修饰键掩码
+  KeyRecorderTests.swift       录制器取到的键与修饰键
+  HotkeysViewModelTests.swift  快捷键的增删与校验
 evidence/                     逆向证据（imports / selectors / strings / Core Data / Playbook）
 scripts/build-app.sh          打包 + ad-hoc 签名 + 安装
 scripts/test.sh               跑测试（带上 Testing 宏插件）
@@ -301,7 +320,8 @@ scripts/test.sh               跑测试（带上 Testing 宏插件）
 | 功能键重映射 | 未做 | 依赖 `functionKeyModifierRaw` 的确切编码，未取到 |
 | 热键 / 单修饰键互斥 | 未做 | 原 app 是全局二选一（`shortcutTriggerMode`），本项目两者可共存；共存更灵活，但如果两者的目标输入法打架，行为与原 app 不同 |
 | 规则的三态「恢复键盘」 | 简化成开/关 | 原 app 的 `doRestoreKeyboard` 是三态（nil=继承全局 / 0=改用默认键盘 / 1=恢复上一个），V1 只需要「恢复 / 不恢复」 |
-| 全局设置（默认输入法、开机自启、热键）没有界面 | 只走命令行 | 这些是低频配置，界面上只会变成一堆开关；设置窗口只做 app 列表 |
+| 全局设置（默认输入法、开机自启、热键）的界面 | 默认输入法、开机自启在菜单栏里，热键在设置窗口的「快捷键」页 | 开关类的放在菜单里：点两下就改完，不用先开一个抢焦点的窗口；要动手输入的（录组合键）才进窗口 |
+| 单修饰键切换没有界面 | 只走命令行 | 它的语义（左右键、单击/双击）要三个选择器才说得清，界面上比热键重得多；等有人真的用命令行配过再说 |
 | 导入时的「隐藏指示器」 | 只搬运不生效 | `hideIndicator` 从原 app 的库里读出来存进配置，但浮动指示器本身没做 |
 
 ---

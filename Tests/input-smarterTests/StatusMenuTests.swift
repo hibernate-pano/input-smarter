@@ -90,3 +90,62 @@ private func sources() -> [InputSourceInfo] {
     #expect(items[0].title == "ABC")
     #expect(items[1].title == "拼音")
 }
+
+/// The default input source has to be marked, otherwise the menu cannot be
+/// read at a glance.
+@Test func theDefaultInputSourceIsMarkedInTheMenu() {
+    let items = StatusItemController.defaultSourceMenuItems(
+        sources: sources(),
+        defaultID: "com.tencent.inputmethod.wetype.pinyin::com.tencent.inputmethod.wetype.pinyin"
+    )
+
+    #expect(items.count == 3, "the first item is the option of not having a default")
+    #expect(items[0].title == "跟随系统（不设默认）")
+    #expect(items[0].state == .off)
+    #expect(items[1].state == .off)
+    #expect(items[2].state == .on)
+}
+
+/// Without a default the system decides, and the menu has to say so.
+@Test func theFollowSystemItemIsMarkedWhenThereIsNoDefault() {
+    let items = StatusItemController.defaultSourceMenuItems(sources: sources(), defaultID: nil)
+
+    #expect(items[0].state == .on)
+    #expect(items[1].state == .off)
+    #expect(items[2].state == .off)
+}
+
+/// The item has to carry the source it sets, so the right one is picked.
+@Test func theDefaultSourceItemsCarryTheSourceTheySet() {
+    let items = StatusItemController.defaultSourceMenuItems(sources: sources(), defaultID: nil)
+
+    #expect(items[0].representedObject as? String == "")
+    #expect(items[1].representedObject as? String == "com.apple.keylayout.ABC")
+    #expect(items[2].representedObject as? String
+        == "com.tencent.inputmethod.wetype.pinyin::com.tencent.inputmethod.wetype.pinyin")
+}
+
+/// Launch at login is a switch, so the menu has to show whether it is on.
+@Test func theLaunchAtLoginItemShowsWhetherItIsOn() {
+    #expect(StatusItemController.launchAtLoginItem(isEnabled: true).state == .on)
+    #expect(StatusItemController.launchAtLoginItem(isEnabled: false).state == .off)
+    #expect(StatusItemController.launchAtLoginItem(isEnabled: true).title == "开机自启")
+}
+
+/// The current input source is shown by name: an identifier is noise.
+@Test func theCurrentInputSourceIsShownByName() {
+    let name = StatusItemController.currentSourceName(
+        sources: sources(),
+        current: InputSourceID(sourceID: "com.apple.keylayout.ABC")
+    )
+    #expect(name == "ABC")
+}
+
+/// A source that is not in the list still has to be readable.
+@Test func anUnknownCurrentInputSourceIsShownWithoutItsBundle() {
+    let name = StatusItemController.currentSourceName(
+        sources: sources(),
+        current: InputSourceID(sourceID: "com.example.gone")
+    )
+    #expect(name == "gone")
+}

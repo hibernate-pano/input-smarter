@@ -71,6 +71,7 @@ kTISPropertyLocalizedName         →  实际是 "TSMInputSourcePropertyLocalize
 - **开机自启** —— LaunchAgent plist（`~/Library/LaunchAgents/com.panbo.input-smarter.plist`）
 - **从原 app 一键导入规则** —— 直接读 Input Source Pro 的 Core Data 库（只读）
 - **菜单栏菜单** —— 当前输入法、手动切换、为当前 app 绑定输入法、规则列表
+- **设置窗口** —— 只列出已配置过的 app，点「＋ 添加 app」按需添加，给任意 app 提前固定输入法（不用先切到那个 app）
 - **命令行改配置、运行中的 app 立即生效** —— 走 `DistributedNotificationCenter` 跨进程通知
 
 ### 单修饰键的判定语义
@@ -179,6 +180,21 @@ designated => identifier "com.panbo.input-smarter"
 
 菜单里出现的 app 名字就是规则会绑定的那个 app——菜单在切换 app 时会重建，不会出现「菜单写着 A、绑到 B」的情况。
 
+### 设置窗口
+
+菜单栏菜单里选「设置…」（或 `Cmd+,`）打开。窗口里只列出**已经配置过**的 app：
+
+- **每行** —— app 图标、名字、绑定的输入法（右侧下拉）、取消固定的按钮
+- **规则指向的 app 即使没装也仍然显示**，标「未安装」
+- **右键 app** —— 「离开这个 app 时恢复输入法」开关
+- **底部的「＋ 添加 app」** —— 点开是一个可以搜索的 app 列表，选中的 app 直接按当前正在用的输入法固定好，回到列表
+
+下拉里选「恢复默认」＝删掉这条规则：这个 app 回到系统的默认输入法，同时从列表里消失；以后想再配，点「＋ 添加 app」加回来。
+
+改完立刻生效，规则会对当前正在用的 app 重新判定一次。
+
+菜单栏 app 没有 Dock 图标，不是系统的前台应用，所以窗口用的是 non-activating panel——否则搜索框拿不到键盘、点不进去。窗口打开时 app 会临时取得焦点（菜单栏上出现自己的菜单），关掉窗口就退回菜单栏 app。
+
 ### 命令行
 
 ```bash
@@ -199,6 +215,7 @@ $APP --add-single-modifier leftOption com.apple.keylayout.ABC singlePress   # �
 $APP --remove-single-modifier leftOption
 $APP --import-input-source-pro      # 从 Input Source Pro 导入规则
 $APP --launch-at-login on|off
+$APP --open-settings              # 让正在运行的 app 打开设置窗口
 ```
 
 热键参数：key code 是 ANSI 键码（K=40）；modifiers 是 Carbon 位掩码（cmd=256 / shift=512 / option=2048 / control=4096），例如 Ctrl+Option+Cmd = 6400。
@@ -244,6 +261,12 @@ Sources/input-smarter/
   ISPImporter.swift           只读导入 Input Source Pro 的 Core Data 规则
   LoginItem.swift             LaunchAgent 开机自启
   StatusItemController.swift  菜单栏 UI
+  AppCatalog.swift             枚举已安装的 app（扫描常用目录 + Launch Services 反查）
+  AppList.swift                已配置 app 的行、可添加的 app、搜索
+  AppRulesViewModel.swift      设置窗口的状态与写规则
+  AppRulesView.swift           设置窗口的界面（SwiftUI）
+  SettingsWindowController.swift 设置窗口（non-activating panel）
+  MainMenu.swift               窗口打开时 app 的菜单栏
   Log.swift                   IS_DEBUG=1 时输出诊断；错误始终写入日志文件
   main.swift                  入口 + CLI
 Tests/input-smarterTests/
@@ -251,6 +274,9 @@ Tests/input-smarterTests/
   SingleModifierManagerTests.swift 修饰键判定状态机
   RuleStoreTests.swift        配置的容错解码 + 跨进程更新
   CommandLineTests.swift      命令行参数解析
+  AppCatalogTests.swift        app 枚举
+  AppListTests.swift           app 列表的合并与搜索
+  AppRulesViewModelTests.swift 设置窗口的绑定动作
 evidence/                     逆向证据（imports / selectors / strings / Core Data / Playbook）
 scripts/build-app.sh          打包 + ad-hoc 签名 + 安装
 scripts/test.sh               跑测试（带上 Testing 宏插件）
@@ -275,6 +301,7 @@ scripts/test.sh               跑测试（带上 Testing 宏插件）
 | 功能键重映射 | 未做 | 依赖 `functionKeyModifierRaw` 的确切编码，未取到 |
 | 热键 / 单修饰键互斥 | 未做 | 原 app 是全局二选一（`shortcutTriggerMode`），本项目两者可共存；共存更灵活，但如果两者的目标输入法打架，行为与原 app 不同 |
 | 规则的三态「恢复键盘」 | 简化成开/关 | 原 app 的 `doRestoreKeyboard` 是三态（nil=继承全局 / 0=改用默认键盘 / 1=恢复上一个），V1 只需要「恢复 / 不恢复」 |
+| 全局设置（默认输入法、开机自启、热键）没有界面 | 只走命令行 | 这些是低频配置，界面上只会变成一堆开关；设置窗口只做 app 列表 |
 | 导入时的「隐藏指示器」 | 只搬运不生效 | `hideIndicator` 从原 app 的库里读出来存进配置，但浮动指示器本身没做 |
 
 ---

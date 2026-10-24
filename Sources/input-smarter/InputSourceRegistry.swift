@@ -200,6 +200,6 @@ enum InputSourceRegistry {
     private static func boolean(_ key: CFString, in source: TISInputSource) -> Bool {
         guard let value = property(key, in: source) else { return false }
         guard CFGetTypeID(value) == CFBooleanGetTypeID() else { return false }
-        return CFBooleanGetValue(value as! CFBoolean)
+        return CFBooleanGetValue((value as! CFBoolean))
     }
 }

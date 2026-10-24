@@ -27,6 +27,9 @@ final class StatusItemController {
     /// back right away instead of on the next configuration change.
     var onRulesChanged: (() -> Void)?
 
+    /// Called when the user asks for the settings window.
+    var onOpenSettings: (() -> Void)?
+
     init(
         store: RuleStore = .shared,
         onSelect: @escaping (InputSourceID) -> Void,
@@ -162,6 +165,9 @@ final class StatusItemController {
         }
 
         menu.addItem(.separator())
+        let settings = NSMenuItem(title: "设置…", action: #selector(openSettings(_:)), keyEquivalent: ",")
+        settings.target = self
+        menu.addItem(settings)
         let quit = NSMenuItem(title: "退出", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quit)
 
@@ -263,5 +269,9 @@ final class StatusItemController {
         store.removeAppRule(bundleID: bundleID)
         onRulesChanged?()
         rebuild()
+    }
+
+    @objc private func openSettings(_ sender: Any?) {
+        onOpenSettings?()
     }
 }

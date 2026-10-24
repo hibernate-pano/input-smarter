@@ -40,3 +40,9 @@ import Testing
     #expect(ModifierKey.parse("cmd") == .leftCommand)
     #expect(ModifierKey.parse("nonsense") == nil)
 }
+
+/// Without a running app there is no window to open, and the command has to
+/// say so instead of doing nothing.
+@Test func openingTheSettingsWindowNeedsARunningApp() {
+    #expect(SettingsRequest.open(isRunning: false) == false)
+}

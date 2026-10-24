@@ -25,7 +25,11 @@ enum Log {
 
     static func debug(_ message: @autoclosure () -> String) {
         guard debugEnabled else { return }
-        write(message())
+        let text = message()
+        write(text)
+        // The debug output goes to the log file as well: the app usually runs
+        // as a LaunchAgent, where stderr ends up nowhere.
+        appendToFile(text)
     }
 
     static func error(_ message: @autoclosure () -> String) {

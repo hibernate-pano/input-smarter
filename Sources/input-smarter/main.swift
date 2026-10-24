@@ -8,6 +8,7 @@ import ApplicationServices
 // `kTCCServiceAccessibility` grant and no Input Monitoring grant — which is
 // why every feature here is built on NSWorkspace, AX and Carbon hotkeys.
 
+@MainActor
 final class AppController {
     private let store = RuleStore.shared
     private let activationWatcher = AppActivationWatcher()
@@ -15,11 +16,15 @@ final class AppController {
     private let singleModifiers = SingleModifierManager()
     private let focusWatcher = AXFocusWatcher()
     private var statusItem: StatusItemController?
+    private var settingsWindow: SettingsWindowController?
+    /// The app that was in front the last time the menu was rebuilt.
+    private var lastFrontmostBundleID: String?
     /// Source that was active before a browser rule took over.
     private var browserRuleSuspendedSource: InputSourceID?
 
     func start() {
         requestAccessibilityIfNeeded()
+        installMainMenu()
 
         HotkeyManager.shared = hotkeys
         hotkeys.start()
@@ -69,10 +74,56 @@ final class AppController {
             // The rule is gone: give the user's input source back now.
             self?.activationWatcher.reapply()
         }
+        statusItem?.onOpenSettings = { [weak self] in
+            self?.showSettings()
+        }
 
         observeConfigurationChanges()
         observeApplicationActivation()
+        observeSettingsRequest()
         hotkeys.sync(store.configuration.hotkeys)
+    }
+
+    /// Open the settings window when the command line asks for it.
+    private func observeSettingsRequest() {
+        DistributedNotificationCenter.default().addObserver(
+            forName: SettingsRequest.notification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            // The observer runs on the main queue.
+            Log.debug("[settings] open request")
+            MainActor.assumeIsolated {
+                self?.showSettings()
+            }
+        }
+    }
+
+    /// Open the settings window: the app list.
+    private func showSettings() {
+        if settingsWindow == nil {
+            let window = SettingsWindowController()
+            window.onRulesChanged = { [weak self] in
+                // A rule was changed in the window: apply it right away.
+                self?.activationWatcher.reapply()
+                self?.statusItem?.rebuild()
+            }
+            settingsWindow = window
+        }
+        settingsWindow?.show()
+    }
+
+    /// Install the menu of the app.
+    ///
+    /// The app lives in the menu bar and has no menu of its own. It needs one
+    /// while the settings window is open: the app takes the focus then, and
+    /// an active app without a menu would leave the menu bar empty.
+    private func installMainMenu() {
+        let actions = MenuActions()
+        actions.onOpenSettings = { [weak self] in
+            self?.showSettings()
+        }
+        MainMenu.install(actions: actions)
     }
 
     /// Re-read the configuration when the CLI changes it.
@@ -80,16 +131,12 @@ final class AppController {
     /// The CLI runs in a separate process, so the change notification has to
     /// arrive over the distributed centre.
     private func observeConfigurationChanges() {
-        let reload: (Notification) -> Void = { [weak self] _ in
-            guard let self else { return }
-            Log.debug("[config] reloaded")
-            self.hotkeys.sync(self.store.configuration.hotkeys)
-            self.singleModifiers.sync(self.store.configuration.singleModifierBindings)
-            self.statusItem?.rebuild()
-            // A rule that was just added for the frontmost app has to take
-            // effect now, and a rule that was just removed has to give the
-            // user's input source back.
-            self.activationWatcher.reapply()
+        // The observers run on the main queue, so the work happens on the
+        // main actor.
+        let reload: @Sendable (Notification) -> Void = { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.reloadConfiguration()
+            }
         }
         NotificationCenter.default.addObserver(
             forName: store.onChange,
@@ -105,19 +152,37 @@ final class AppController {
         )
     }
 
+    private func reloadConfiguration() {
+        Log.debug("[config] reloaded")
+        hotkeys.sync(store.configuration.hotkeys)
+        singleModifiers.sync(store.configuration.singleModifierBindings)
+        statusItem?.rebuild()
+        settingsWindow?.reload()
+        // A rule that was just added for the frontmost app has to take
+        // effect now, and a rule that was just removed has to give the
+        // user's input source back.
+        activationWatcher.reapply()
+    }
+
     /// Keep the menu in step with the frontmost application.
     private func observeApplicationActivation() {
-        var lastBundleID: String?
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            let bundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
-            guard bundleID != lastBundleID else { return }
-            lastBundleID = bundleID
-            self?.statusItem?.rebuild()
+            // The observer runs on the main queue.
+            MainActor.assumeIsolated {
+                self?.handleApplicationActivation()
+            }
         }
+    }
+
+    private func handleApplicationActivation() {
+        let bundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        guard bundleID != lastFrontmostBundleID else { return }
+        lastFrontmostBundleID = bundleID
+        statusItem?.rebuild()
     }
 
     /// Ask for Accessibility once; without it neither the AX focus watcher
@@ -328,6 +393,14 @@ enum CLI {
             // Nothing imported and something went wrong: say so.
             return result.imported.isEmpty && !result.skipped.isEmpty ? 1 : 0
 
+        case "--open-settings":
+            guard SettingsRequest.open() else {
+                print("input-smarter is not running")
+                return 1
+            }
+            print("opening the settings window")
+            return 0
+
         case "--launch-at-login":
             guard arguments.count >= 2 else { return usage() }
             let enabled = parseToggle(arguments[1])
@@ -391,6 +464,7 @@ enum CLI {
           --remove-hotkey <uuid>        删除热键（uuid 见 --list-rules）
           --import-input-source-pro [db] 从 Input Source Pro 的数据库导入规则
           --launch-at-login <on|off>     设置/取消开机自启
+          --open-settings                让正在运行的 app 打开设置窗口
           --add-single-modifier <option|shift|control|command> <sourceID> [singlePress|doublePress]
                                       用修饰键点按切换输入法
           --remove-single-modifier <modifier>  取消修饰键切换
@@ -416,6 +490,29 @@ enum SingleInstance {
     }
 }
 
+/// Asks the running app to open its settings window.
+///
+/// The app lives in the menu bar and has no window of its own, so the window
+/// is opened through a notification the command line sends.
+enum SettingsRequest {
+    static let notification = Notification.Name("com.input-smarter.openSettings")
+
+    /// Returns false when the app is not running: there is no window then.
+    @discardableResult
+    static func open(isRunning: Bool = SingleInstance.anotherInstanceRunning()) -> Bool {
+        guard isRunning else { return false }
+        DistributedNotificationCenter.default().post(
+            name: notification,
+            object: nil,
+            userInfo: nil
+        )
+        // The message is on its way to the app, but this process is about to
+        // exit: give it a moment to be delivered.
+        RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+        return true
+    }
+}
+
 let arguments = Array(CommandLine.arguments.dropFirst())
 if !arguments.isEmpty {
     exit(CLI.run(arguments))
@@ -428,7 +525,11 @@ if SingleInstance.anotherInstanceRunning() {
 }
 
 let application = NSApplication.shared
-let controller = AppController()
-application.setActivationPolicy(.accessory)
-controller.start()
+// The top level of main.swift is not actor isolated, but it does run on the
+// main thread — which is what the app needs.
+let controller = MainActor.assumeIsolated { AppController() }
+MainActor.assumeIsolated {
+    application.setActivationPolicy(.accessory)
+    controller.start()
+}
 application.run()
